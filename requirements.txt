@@ -58,15 +58,6 @@ joblib==1.2.0
 json5==0.9.11
 jsonpointer==2.3
 jsonschema==4.17.3
-jupyter-events==0.5.0
-jupyter_client==7.4.8
-jupyter_core==5.1.2
-jupyter_server==2.0.6
-jupyter_server_terminals==0.4.3
-jupyterlab==3.5.2
-jupyterlab-pygments==0.2.2
-jupyterlab-widgets==3.0.7
-jupyterlab_server==2.18.0
 keras==2.11.0
 kiwisolver==1.4.4
 libclang==14.0.6
@@ -86,8 +77,6 @@ nbconvert==7.2.7
 nbformat==5.7.1
 nest-asyncio==1.5.6
 networkx==3.1
-notebook==6.5.2
-notebook_shim==0.2.2
 numpy==1.24.1
 nvidia-cublas-cu11==11.10.3.66
 nvidia-cuda-cupti-cu11==11.7.101
@@ -156,12 +145,6 @@ sniffio==1.3.0
 soupsieve==2.3.2.post1
 stack-data==0.6.2
 sympy==1.11.1
-tensorboard==2.11.0
-tensorboard-data-server==0.6.1
-tensorboard-plugin-wit==1.8.1
-tensorflow==2.11.0
-tensorflow-estimator==2.11.0
-tensorflow-io-gcs-filesystem==0.29.0
 termcolor==2.2.0
 terminado==0.17.1
 Theano==1.0.5
@@ -169,8 +152,6 @@ threadpoolctl==3.1.0
 tinycss2==1.2.1
 tldextract==3.4.0
 tomli==2.0.1
-torch==2.0.0
-torch_geometric @ git+https://github.com/pyg-team/pytorch_geometric.git@8b37ad571b6e08d700f344cd9965724939f4bd4c
 tornado==6.2
 tqdm==4.65.0
 traitlets==5.8.0
