@@ -141,6 +141,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# Codium
+
+codeium-jupyter/
+
 # Spyder project settings
 .spyderproject
 .spyproject
