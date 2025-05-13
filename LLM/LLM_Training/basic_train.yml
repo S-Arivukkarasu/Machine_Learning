@@ -1,0 +1,22 @@
+base_model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+batch_size: 4
+bf16: auto
+datasets:
+- path: jaydenccc/AI_Storyteller_Dataset
+  type:
+    field_instruction: synopsis
+    field_output: short_story
+    field_system: system
+    format: <|user|> {instruction} </s> <|assistant|>
+    no_input_format: <|user|> {instruction} </s> <|assistant|>
+    system_prompt: ''
+learning_rate: 0.0002
+logging_steps: 1
+micro_batch_size: 2
+model_type: LlamaForCausalLM
+num_epochs: 4
+optimizer: adamw_bnb_8bit
+output_dir: ./models/Tiny_Llama_Storyteller
+sequence_length: 1024
+tf32: false
+tokenizer_type: LlamaTokenizer
