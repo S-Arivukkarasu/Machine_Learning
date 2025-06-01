@@ -1,0 +1,23 @@
+adapter: qlora
+base_model: unsloth/gemma-2-9b-it-bnb-4bit
+bf16: auto
+datasets:
+- path: Yukang/LongAlpaca-12k
+  type: alpaca
+flash_attention: false
+gradient_accumulation_steps: 1
+gradient_checkpointing: true
+learning_rate: 0.0002
+load_in_4bit: true
+load_in_8bit: false
+logging_steps: 1
+lora_alpha: 16
+lora_dropout: 0.05
+lora_r: 32
+lora_target_linear: true
+micro_batch_size: 1
+num_epochs: 1
+optimizer: adamw_bnb_8bit
+output_dir: ./models/LongAlpaca
+sequence_length: 1024
+tf32: false

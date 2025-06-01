@@ -1,0 +1,27 @@
+adapter: lora
+base_model: unsloth/Meta-Llama-3.1-8B-Instruct
+bf16: auto
+datasets:
+- path: jaydenccc/AI_Storyteller_Dataset
+  type:
+    field_instruction: synopsis
+    field_output: short_story
+    field_system: system
+    format: <|user|> {instruction} </s> <|assistant|>
+    no_input_format: <|user|> {instruction} </s> <|assistant|>
+    system_prompt: You are an amazing storyteller. From the following synopsis, create
+      an engaging story.
+gradient_accumulation_steps: 1
+gradient_checkpointing: true
+learning_rate: 0.0002
+logging_steps: 1
+lora_alpha: 16
+lora_dropout: 0.05
+lora_r: 16
+lora_target_linear: true
+micro_batch_size: 1
+num_epochs: 1
+optimizer: adamw_bnb_8bit
+output_dir: ./models/Llama3_Storyteller2
+sequence_length: 512
+tf32: false

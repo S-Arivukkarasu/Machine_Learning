@@ -1,0 +1,29 @@
+adapter: lora
+base_model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+bf16: auto
+datasets:
+- path: Arivukkarasu/squad_for_llms
+  type:
+    field_input: context
+    field_instruction: question
+    field_output: output
+    field_system: system
+    format: <|user|> {input} {instruction} </s> <|assistant|>
+    no_input_format: <|user|> {instruction} </s> <|assistant|>
+    system_prompt: Read the following context and concisely answer my question.
+gradient_accumulation_steps: 1
+gradient_checkpointing: true
+learning_rate: 0.0002
+load_in_8bit: true
+logging_steps: 1
+lora_alpha: 16
+lora_dropout: 0.05
+lora_r: 32
+lora_target_linear: true
+micro_batch_size: 4
+num_epochs: 1
+optimizer: adamw_bnb_8bit
+output_dir: ./models/
+sequence_length: 2048
+tf32: false
+train_on_inputs: false
