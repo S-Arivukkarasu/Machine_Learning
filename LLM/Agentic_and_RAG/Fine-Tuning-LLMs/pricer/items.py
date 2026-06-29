@@ -26,6 +26,7 @@ class Item(BaseModel):
     weight: Optional[float] = None
     summary: Optional[str] = None
     prompt: Optional[str] = None
+    completion: Optional[str] = None
     id: Optional[int] = None
 
     def make_prompt(self, text: str):
@@ -121,3 +122,127 @@ class Item(BaseModel):
             [cls.model_validate(row) for row in ds["validation"]],
             [cls.model_validate(row) for row in ds["test"]],
         )
+        
+
+    def count_tokens(self, tokenizer):
+        """
+        Count tokens in the item summary.
+    
+        Encodes the summary text using the provided tokenizer
+        and returns the total number of tokens. This is useful
+        for filtering, truncating, or analyzing dataset entries
+        before training.
+    
+        Args:
+            tokenizer: Tokenizer used to encode the summary text.
+    
+        Returns:
+            int: Number of tokens in the summary.
+        """
+        return len(tokenizer.encode(self.summary, add_special_tokens=False))
+
+    def make_prompts(self, tokenizer, max_tokens, do_round):
+        """
+        Generate prompt and completion fields for training.
+    
+        Creates a prompt-completion pair from the item summary
+        and price. If the summary exceeds the specified token
+        limit, it is truncated to the maximum allowed number
+        of tokens before being used in the prompt.
+    
+        The generated prompt consists of:
+        1. A predefined pricing question
+        2. The product summary
+        3. A price prefix indicating where the model should
+           generate the answer
+    
+        The completion contains the product price, optionally
+        rounded to the nearest dollar.
+    
+        Args:
+            tokenizer: Tokenizer used to count and truncate
+                summary tokens.
+            max_tokens (int): Maximum number of tokens allowed
+                in the summary portion of the prompt.
+            do_round (bool): If True, round the price to the
+                nearest dollar and format it as ``XX.00``.
+                Otherwise, use the original price value.
+    
+        Returns:
+            None: The generated values are stored in
+                ``self.prompt`` and ``self.completion``.
+        """
+        tokens = tokenizer.encode(self.summary, add_special_tokens=False)
+        if len(tokens) > max_tokens:
+            summary = tokenizer.decode(tokens[:max_tokens]).rstrip()
+        else:
+            summary = self.summary
+        self.prompt = f"{QUESTION}\n\n{summary}\n\n{PREFIX}"
+        self.completion = f"{round(self.price)}.00" if do_round else str(self.price)
+
+    def count_prompt_tokens(self, tokenizer):
+        """
+        Count tokens in the full prompt-completion pair.
+    
+        Combines the generated prompt and completion text,
+        tokenizes the result, and returns the total number
+        of tokens. This is useful for estimating training
+        costs and ensuring examples fit within model context
+        limits.
+    
+        Args:
+            tokenizer: Tokenizer used to encode the text.
+    
+        Returns:
+            int: Total number of tokens in the concatenated
+                prompt and completion.
+        """
+        full = self.prompt + self.completion
+        tokens = tokenizer.encode(full, add_special_tokens=False)
+        return len(tokens)
+
+    def to_datapoint(self) -> dict:
+        """
+        Convert the Item into a prompt-completion datapoint.
+    
+        Creates a dictionary containing only the fields
+        required for supervised fine-tuning (SFT), namely
+        the prompt and its corresponding completion.
+    
+        Returns:
+            dict: A dictionary with the following keys:
+                - "prompt": Input text provided to the model.
+                - "completion": Expected model output.
+        """
+        return {"prompt": self.prompt, "completion": self.completion}
+
+    @staticmethod
+    def push_prompts_to_hub(
+        dataset_name: str, train: list[Self], val: list[Self], test: list[Self]
+    ):
+        """
+        Push prompt-completion datasets to the Hugging Face Hub.
+    
+        Converts Item objects into prompt-completion dictionaries
+        using ``to_datapoint()`` and organizes them into training,
+        validation, and test splits. The resulting dataset is then
+        uploaded to the specified Hugging Face Hub repository for
+        supervised fine-tuning (SFT).
+    
+        Args:
+            dataset_name (str): Name of the dataset repository on
+                Hugging Face.
+            train (list[Item]): Training examples.
+            val (list[Item]): Validation examples.
+            test (list[Item]): Test examples.
+    
+        Returns:
+            None
+        """
+        DatasetDict(
+            {
+                "train": Dataset.from_list([item.to_datapoint() for item in train]),
+                "val": Dataset.from_list([item.to_datapoint() for item in val]),
+                "test": Dataset.from_list([item.to_datapoint() for item in test]),
+            }
+        ).push_to_hub(dataset_name)
