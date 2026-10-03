@@ -1,8 +1,8 @@
 import os
-from litellm import completion
+import litellm
 
 
-DEFAULT_MODEL_NAME=os.getenv("PRICER_PREPROCESSOR_MODEL", "ollama/llama3.2")
+DEFAULT_MODEL_NAME=os.getenv("PRICER_PREPROCESSOR_MODEL", "openai/Qwen/Qwen3.5-35B-A3B-FP8")
 DEFAULT_REASONING_EFFORT="low" if "gpt-oss" in DEFAULT_MODEL_NAME else None
 
 SYSTEM_PROMPT="""Create a concise description of a product. Respond only in this format. Do not include part numbers.
@@ -54,10 +54,9 @@ class Preprocessor:
         self.total_cost = 0
         self.model_name = model_name
         self.reasoning_effect = reasoning_effect
-        self.base_url = base_url
-
-        if ("ollama" in model_name) and (not base_url):
-            self.base_url = "http://localhost:11434"
+        self.base_url = os.environ['MODAL_ENDPOINT_URL']
+        self.token_id = os.environ['MODAL_PROXY_TOKEN_ID']
+        self.token_secret = os.environ['MODAL_PROXY_TOKEN_SECRET']
     
     def messages_for(self, text:str) -> list[dict]:
         """
@@ -88,13 +87,18 @@ class Preprocessor:
                 the language model.
         """
         messages = self.messages_for(text=text)
-        response = completion(
+        litellm.api_base = (self.base_url)
+        litellm.api_key = (
+            f"{self.token_id}."
+            f"{self.token_secret}"
+            )
+        response = litellm.completion(
             messages=messages,
             model=self.model_name,
-            reasoning_effort=self.reasoning_effect,
-            api_base=self.base_url,
+            extra_body={"reasoning_effort": self.reasoning_effect},
         )
         self.total_input_tokens += response.usage.prompt_tokens
         self.total_output_tokens += response.usage.completion_tokens
-        self.total_cost += response._hidden_params["response_cost"]
+        # self.total_cost += response._hidden_params["response_cost"]
+        # print(self.total_input_tokens, self.total_output_tokens)
         return response.choices[0].message.content

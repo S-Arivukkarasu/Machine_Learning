@@ -1,4 +1,5 @@
-from ollama import chat
+import os
+import litellm
 from agents.agent import Agent
 from typing import Optional, List
 from agents.deals import ScrapedDeal, DealSelection
@@ -24,7 +25,7 @@ class ScannerAgent(Agent):
         color: Display color inherited from the Agent base class.
     """
 
-    MODEL = "qwen3"
+    MODEL = "openai/Qwen/Qwen3.5-35B-A3B-FP8"
 
     SYSTEM_PROMPT = """You identify and summarize the 5 most detailed deals from a list, by selecting deals that have the most detailed, high quality description and the most clear price.
     Respond strictly in JSON with no explanation, using this format. You should provide the price as a number derived from the description. If the price of a deal isn't clear, do not include that deal in your response.
@@ -55,6 +56,9 @@ class ScannerAgent(Agent):
         required because Ollama is invoked directly when a scan is performed.
         """
         self.log("Scanning Agent Initializing")
+        self.base_url = os.environ['MODAL_ENDPOINT_URL']
+        self.token_id = os.environ['MODAL_PROXY_TOKEN_ID']
+        self.token_secret = os.environ['MODAL_PROXY_TOKEN_SECRET']
         self.log("Scanner Agent is Ready")
 
     def fetch_deals(self, memory) -> List[ScrapedDeal]:
@@ -129,19 +133,21 @@ class ScannerAgent(Agent):
         if scraped:
             user_prompt = self.make_user_prompt(scraped)
             self.log("Scanner Agent is calling Ollama using Structured Outputs")
-            result = chat(
+            litellm.api_base = (self.base_url)
+            litellm.api_key = (
+                f"{self.token_id}."
+                f"{self.token_secret}"
+                )
+            result = litellm.completion(
                 model=self.MODEL,
                 messages=[
                     {"role": "system", "content": self.SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},
                 ],
-                format=DealSelection.model_json_schema(),
-                think=False,
-                options={
-                    "temperature": 0,
-                },
+                response_format=DealSelection,
+                extra_body={"reasoning_effort": "low"}
             )
-            result = DealSelection.model_validate_json(result.message.content)
+            result = DealSelection.model_validate_json(result.choices[0].message.content)
             result.deals = [deal for deal in result.deals if deal.price>0]
             self.log(
                 f"Scanner Agent received {len(result.deals)} selected deals with price>0 from OpenAI"
