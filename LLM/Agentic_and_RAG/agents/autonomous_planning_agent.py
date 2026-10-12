@@ -10,13 +10,43 @@ from agents.ensemble_agent import EnsembleAgent
 
 
 class AutonomousPlanningAgent(Agent):
+    """
+    Orchestrates the bargain-finding workflow by coordinating the scanner and
+    ensemble valuation agents.
+
+    The agent uses an LLM with tool-calling capabilities to:
+    1. Scan the internet for potential bargain deals.
+    2. Estimate the true value of each discovered item.
+    3. Select the most compelling opportunity based on the price-to-value gap.
+    4. Optionally notify the user about the selected opportunity.
+
+    The agent maintains the current scan memory and selected opportunity during
+    a planning run. It also configures LiteLLM to communicate with the
+    configured model endpoint.
+
+    Attributes:
+        name: Human-readable name of the agent.
+        color: Display color inherited from the base Agent class.
+        MODEL: Model identifier used for LLM-based planning.
+        scanner: Agent responsible for finding bargain deals.
+        ensemble: Agent responsible for estimating the true value of products.
+        memory: Previously surfaced deal URLs used to avoid duplicate results.
+        opportunity: The best opportunity identified during the current run.
+        base_url: Endpoint URL used to access the configured model.
+        token_id: Authentication token identifier for the model endpoint.
+        token_secret: Authentication secret for the model endpoint.
+    """
     name = "Autonomous Planning Agent"
     color = Agent.GREEN
     MODEL = "openai/Qwen/Qwen3.5-35B-A3B-FP8"
 
     def __init__(self, collection):
         """
-        Create instances of the 3 Agents that this planner coordinates across
+        Initialize the autonomous planning agent and its supporting agents.
+
+        Args:
+            collection: Collection or data source passed to the
+                EnsembleAgent for product valuation.
         """
         self.log("Autonomous Planning Agent is initializing")
         self.scanner = ScannerAgent()
@@ -31,7 +61,15 @@ class AutonomousPlanningAgent(Agent):
 
     def scan_the_internet_for_bargains(self) -> str:
         """
-        Run the tool to scan
+        Scan the internet for bargain products using the ScannerAgent.
+
+        The current memory is passed to the scanner so previously surfaced
+        deals can be taken into account. The scanner's results are serialized
+        to JSON for consumption by the LLM tool-calling workflow.
+
+        Returns:
+            A JSON string containing the discovered bargain deals, or
+            ``"No Deals Found"`` when the scanner returns no results.
         """
         self.log("Autonomous Planning agent is calling scanner")
         results = self.scanner.scan(memory=self.memory)
@@ -39,7 +77,15 @@ class AutonomousPlanningAgent(Agent):
 
     def estimate_true_value(self, description: str) -> str:
         """
-        Run the tool to estimate true value
+        Estimate the actual market value of a product.
+
+        Args:
+            description: Textual description of the product whose true value
+                should be estimated.
+
+        Returns:
+            A human-readable string containing the product description and
+            its estimated true value.
         """
         self.log("Autonomous Planning agent is estimating value via Ensemble Agent")
         estimate = self.ensemble.price(description)
@@ -120,7 +166,13 @@ class AutonomousPlanningAgent(Agent):
 
     def get_tools(self):
         """
-        Return the json for the tools to be used
+        Return the tool definitions available to the planning LLM.
+
+        The tools allow the LLM to scan for bargains and estimate the true
+        value of discovered products.
+
+        Returns:
+            A list of OpenAI-compatible function tool definitions.
         """
         return [
             {"type": "function", "function": self.scan_function},
@@ -130,7 +182,19 @@ class AutonomousPlanningAgent(Agent):
     
     def handle_tool_call(self, message):
         """
-        Actually call the tools associated with this message
+        Execute the tools requested by an LLM response.
+
+        Each tool call in the message is mapped to its corresponding Python
+        method, its JSON arguments are decoded, and the method is executed.
+        The results are returned in the format expected by the LLM for
+        subsequent tool-calling iterations.
+
+        Args:
+            message: An LLM response message containing one or more tool calls.
+
+        Returns:
+            A list of tool-result messages containing the output of each
+            executed tool.
         """
         mapping = {
             "scan_the_internet_for_bargains": self.scan_the_internet_for_bargains,
@@ -160,9 +224,21 @@ class AutonomousPlanningAgent(Agent):
 
     def plan(self, memory: List[str] = []) -> Optional[Opportunity]:
         """
-        Run the full workflow, providing the LLM with tools to surface scraped deals to the user
-        :param memory: a list of URLs that have been surfaced in the past
-        :return: an Opportunity if one was surfaced, otherwise None
+        Execute the complete autonomous bargain-discovery workflow.
+
+        The LLM is instructed to scan for bargains, estimate the true value
+        of each discovered product, and identify the most compelling deal.
+        Tool calls are executed iteratively until the LLM completes its
+        response.
+
+        Args:
+            memory: A list of URLs representing deals that have already been
+                surfaced in previous runs. These are passed to the scanner to
+                help avoid resurfacing the same opportunities.
+
+        Returns:
+            The selected ``Opportunity`` if a deal was identified and
+            surfaced; otherwise, ``None``.
         """
         self.log("Autonomous Planning Agent is kicking off a run")
         self.memory = memory
